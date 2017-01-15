@@ -209,6 +209,63 @@ func GeneticAlg(filename string) {
 
 func HybridAlg(filename string) {
 	distanceTable = readFile(filename)
+
+
+	param := genetic.Parameter{
+		Initializer: new(genetic.RandomInitializer),
+		Selector: new(genetic.RandomSelector),
+		Breeder: new(genetic.GA2PointBreeder),
+		Mutator: new(genetic.RandomBitFlipMutator),
+		PMutate: 0.1,
+		PBreed: 0.7,
+	}
+
+	ga := genetic.NewGA(param)
+
+	genome := genetic.NewMyGenome(size, fitness)
+
+	ga.Init(100, genome)
+	ga.Optimize(10)
+
+	//ga.PrintTop(10)
+	bestga := ga.Best().(genetic.MyGenome)
+	solution := bestga.Gene
+
+	annealing := func (solution []int) ([]int, float64, []int, float64) {
+		var bestSolution []int
+		bestDistance := 0.0
+		oldDist := Distance(solution)
+		T := 1.0
+		TMin := 0.0
+		alpha := 0.00001
+		for T > TMin {
+			for i := 1; i <= 100; i++ {
+				newSolution := Neighbour(solution)
+				newDist := Distance(newSolution)
+
+				ap := math.Exp((oldDist - newDist) / T)
+				if ap > rand.Float64() {
+					solution = newSolution
+					oldDist = newDist
+				}
+
+				if newDist > bestDistance {
+					bestSolution = newSolution
+					bestDistance = newDist
+				}
+			}
+			T = T - alpha
+		}
+		return solution, oldDist, bestSolution, bestDistance
+	}
+
+	solution, oldfitness, best, bestfit := annealing(solution)
+
+	fmt.Println("Solution: ", solution)
+	fmt.Println("Fitness: ", oldfitness)
+
+	fmt.Println("Best: ", best)
+	fmt.Println("BESTFIT: ", bestfit)
 }
 
 func menu() int {
@@ -226,6 +283,8 @@ func menu() int {
 		fmt.Scanf("%d", &op)
 	}
 	return op
+
+
 }
 
 func main() {
