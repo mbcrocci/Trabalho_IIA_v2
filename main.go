@@ -6,7 +6,6 @@ import (
 	"time"
 	"fmt"
 	"bufio"
-	"runtime"
 	"math"
 	"github.com/mbcrocci/Trabalho_IIA_v2/genetic"
 )
@@ -14,6 +13,36 @@ var (
 	distanceTable DistanceTable
  	size int
 )
+
+func readFile(filename string) DistanceTable {
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("Erro ao abrir o ficheiro: ", err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	localTable := DistanceTable{}
+	verts := []int{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		node1, node2, cost := 0, 0, 0.0
+		fmt.Sscanf(line, "%d %d %f", &node1, &node2, &cost)
+
+		if !contains(verts, node1) {
+			verts = append(verts, node1)
+		}
+		if !contains(verts, node2) {
+			verts = append(verts, node2)
+		}
+
+		localTable.Add(node1, node2, cost)
+	}
+	size = len(verts)
+	return localTable
+}
 
 func Distance(s []int) float64 {
 	verts := []int{}
@@ -40,9 +69,12 @@ func Neighbour(s []int) []int {
 	n := make([]int, len(s))
 	copy(n, s)
 	i := rand.Intn(len(s))
-	j := rand.Intn(len(s))
 
-	n[i], n[j] = n[j], n[i]
+	if n[i] == 0 {
+		n[i] = 1
+	} else {
+		n[i] = 0
+	}
 
 	return n
 }
@@ -85,36 +117,8 @@ func contains(s []int, e int) bool {
 	return false
 }
 
-func graphAlg(filename string) {
-	file, err := os.Open(filename)
-	if err != nil {
-		fmt.Println("Erro ao abrir o ficheiro: ", err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	distanceTable = DistanceTable{}
-	verts := []int{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		node1, node2, cost := 0, 0, 0.0
-		fmt.Sscanf(line, "%d %d %f", &node1, &node2, &cost)
-
-		if !contains(verts, node1) {
-			verts = append(verts, node1)
-		}
-		if !contains(verts, node2) {
-			verts = append(verts, node2)
-		}
-
-		distanceTable.Add(node1, node2, cost)
-	}
-	file.Close()
-
-	//distanceTable.Print()
-	size = len(verts)
+func GraphAlg(filename string) {
+	distanceTable = readFile(filename)
 
 	solution := make([]int, size)
 	for i, _ := range solution {
@@ -143,7 +147,7 @@ func graphAlg(filename string) {
 					bestDistance = newDist
 				}
 			}
-			T = T * alpha
+			T = T - alpha
 		}
 		return solution, oldDist, bestSolution, bestDistance
 	}
@@ -159,7 +163,7 @@ func graphAlg(filename string) {
 
 func fitness(g genetic.MyGenome) float64 {
 	verts := []int{}
-	for i := 1; i < len(g.Gene); i++ {
+	for i := 1; i <= len(g.Gene); i++ {
 		if g.Gene[i-1] == 1 {
 			verts = append(verts, i)
 		}
@@ -180,34 +184,7 @@ func fitness(g genetic.MyGenome) float64 {
 
 
 func GeneticAlg(filename string) {
-	distanceTable = DistanceTable{}
-
-	file, err := os.Open(filename)
-	if err != nil {
-		fmt.Println("Erro ao abrir o ficheiro: ", err)
-		os.Exit(1)
-	}
-
-	verts := []int{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		node1, node2, cost := 0, 0, 0.0
-		fmt.Sscanf(line, "%d %d %f", &node1, &node2, &cost)
-
-		if !contains(verts, node1) {
-			verts = append(verts, node1)
-		}
-		if !contains(verts, node2) {
-			verts = append(verts, node2)
-		}
-
-		distanceTable.Add(node1, node2, cost)
-	}
-	file.Close()
-
-	size = len(verts)
+	distanceTable = readFile(filename)
 
 	param := genetic.Parameter{
 		Initializer: new(genetic.RandomInitializer),
@@ -225,12 +202,14 @@ func GeneticAlg(filename string) {
 	ga.Init(100, genome)
 	ga.Optimize(10)
 
-	ga.PrintTop(10)
-
-	fmt.Println("\nBest: ", ga.Best())
+	//ga.PrintTop(10)
+	best := ga.Best()
+	fmt.Println("\nBest: ", best, " -> Fit: ", best.Fitness())
 }
 
-func hybrid(filename string) {}
+func HybridAlg(filename string) {
+	distanceTable = readFile(filename)
+}
 
 func menu() int {
 	fmt.Println("1 - Graph Alg")
@@ -250,18 +229,16 @@ func menu() int {
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	rand.Seed(time.Now().UTC().UnixNano())
-
 
 	op := menu()
 	switch op {
 	case 1:
-		graphAlg(os.Args[1])
+		GraphAlg(os.Args[1])
 	case 2:
 		GeneticAlg(os.Args[1])
 	case 3:
-		hybrid(os.Args[1])
+		HybridAlg(os.Args[1])
 	case 4:
 		test_all_graph()
 	case 5:
@@ -270,7 +247,27 @@ func main() {
 		test_all_hybrid()
 	}
 }
-func test_all_graph() {}
+func test_all_graph() {
+	filenames := []string{
+		"instancias/MDPI1_20.txt",
+		"instancias/MDPI1_150.txt",
+		"instancias/MDPI1_500.txt",
+		"instancias/MDPI2_25.txt",
+		"instancias/MDPI2_30.txt",
+		"instancias/MDPI2_150.txt",
+		"instancias/MDPII1_20.txt",
+		"instancias/MDPII1_150.txt",
+		"instancias/MDPII2_25.txt",
+		"instancias/MDPII2_30.txt",
+		"instancias/MDPII2_150.txt",
+		"instancias/MDPII2_500.txt",
+	}
+
+	for _, filename := range filenames {
+		fmt.Print(filename, ": ")
+		GraphAlg(filename)
+	}
+}
 
 func test_all_genetic() {
 	filenames := []string{
@@ -294,5 +291,25 @@ func test_all_genetic() {
 	}
 }
 
-func test_all_hybrid() {}
+func test_all_hybrid() {
+	filenames := []string{
+		"instancias/MDPI1_20.txt",
+		"instancias/MDPI1_150.txt",
+		"instancias/MDPI1_500.txt",
+		"instancias/MDPI2_25.txt",
+		"instancias/MDPI2_30.txt",
+		"instancias/MDPI2_150.txt",
+		"instancias/MDPII1_20.txt",
+		"instancias/MDPII1_150.txt",
+		"instancias/MDPII2_25.txt",
+		"instancias/MDPII2_30.txt",
+		"instancias/MDPII2_150.txt",
+		"instancias/MDPII2_500.txt",
+	}
+
+	for _, filename := range filenames {
+		fmt.Print(filename, ": ")
+		HybridAlg(filename)
+	}
+}
 
