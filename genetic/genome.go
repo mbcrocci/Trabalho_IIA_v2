@@ -57,7 +57,6 @@ func NewMyGenome(size int, fitnessFunc func(genome MyGenome) float64) MyGenome {
 	g := MyGenome{}
 	g.Gene = make([]int, size)
 
-	fmt.Println("MADE THE GENES: ", g.Gene)
 	g.Randomize()
 	g.fitness = 0
 	g.fitnessFunc = fitnessFunc
@@ -112,12 +111,12 @@ func (g MyGenome) Valid() bool {
 			verts = append(verts, i)
 		}
 	}
-	for i := 1; i < len(verts); i++ {
-		//if _, found := distanceTable.Search(i-1, i); !found {
-		//	return false
-		//}
+	/*for i := 1; i < len(verts); i++ {
+		if _, found := distanceTable.Search(i-1, i); !found {
+			return false
+		}
 
-	}
+	}*/
 	return true
 }
 func (g MyGenome) Len() int { return len(g.Gene) }

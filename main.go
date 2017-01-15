@@ -6,10 +6,9 @@ import (
 	"time"
 	"fmt"
 	"bufio"
-	"github.com/MaxHalford/gago"
-	"strconv"
 	"runtime"
 	"math"
+	"github.com/mbcrocci/Trabalho_IIA_v2/genetic"
 )
 var (
 	distanceTable DistanceTable
@@ -19,24 +18,23 @@ var (
 type Solution []int
 func (s Solution) Distance() float64 {
 	verts := []int{}
-	for i, b := range s {
-		if b == 1 {
-			verts = append(verts, i+1)
+	for i := 1; i < len(s); i++ {
+		if s[i-1] == 1 {
+			verts = append(verts, i)
 		}
 	}
 
 	var total float64
 	var count float64
-	for i := 1; i < len(verts); i++{
+	for i := 0; i < len(verts); i++{
 		for j := i+1; j < len(verts); j++ {
-			if dist, found := distanceTable.Search(verts[i - 1], verts[j]); found {
-				total += dist
-				count++
-			}
+			dist, _ := distanceTable.Search(verts[i], verts[j])
+			total += dist
+			count++
 		}
 	}
 
-	return float64(size) - ( total / count)
+	return  total / count
 }
 
 func (s Solution) Neighbour() Solution {
@@ -49,29 +47,28 @@ func (s Solution) Neighbour() Solution {
 	return n
 }
 
-type Edge string
-func makeEdge(n1, n2 int) Edge {
-	return Edge(strconv.Itoa(n1) + "-" + strconv.Itoa(n2))
+type Edge struct {
+	From, To int
+	Dist float64
 }
 
-type DistanceTable map[Edge]float64
+type DistanceTable []Edge
 
 func (d *DistanceTable) Add(n1, n2 int, dist float64) {
 	if _, found := (*d).Search(n1, n2); !found {
-		e := makeEdge(n1, n2)
-		(*d)[e] = dist
+		*d = append(*d, Edge{n1,n2, dist})
 	}
 }
 
 // Search devolve o custo de ir de n1 para n2
 // Devolve um false caso essa ligacao nao exista
 func (d DistanceTable) Search(n1, n2 int) (float64, bool) {
-	e := makeEdge(n1, n2)
-	if dist, ok := d[e]; !ok {
-		return 0.0, false
-	} else {
-		return dist, true
+	for _, edge := range d {
+		if (edge.From == n1 && edge.To == n2) || (edge.From == n2 && edge.To == n1) {
+			return edge.Dist, true
+		}
 	}
+	return 0.0, false
 }
 
 func (d DistanceTable) Print() {
@@ -79,52 +76,6 @@ func (d DistanceTable) Print() {
 	for edge, dist := range d {
 		fmt.Println(edge, " = ", dist)
 	}
-}
-
-type Digits []int
-func (X Digits) Evaluate() float64 {
-	verts := []int{}
-	for i, b := range X {
-		if b == 1 {
-			verts = append(verts, i+1)
-		}
-	}
-
-	var total float64
-	var count float64
-	for i := 1; i < len(verts); i++{
-		for j := i+1; j < len(verts); j++ {
-			if dist, found := distanceTable.Search(verts[i - 1], verts[j]); found {
-				total += dist
-				count++
-			}
-		}
-	}
-
-	return (total / count)
-}
-
-// Mutate a slice of digits by permuting it's values.
-func (X Digits) Mutate(rng *rand.Rand) {
-	gago.MutPermuteInt(X, 3, rng)
-}
-
-// Crossover a slice of digits with another by applying 2-point crossover.
-func (X Digits) Crossover(Y gago.Genome, rng *rand.Rand) (gago.Genome, gago.Genome) {
-	var o1, o2 = gago.CrossGNXInt(X, Y.(Digits), 2, rng)
-	return Digits(o1), Digits(o2)
-}
-
-// MakeDigits creates random slices of digits by randomly assigning them 1s and
-// 0s.
-func MakeDigits(rng *rand.Rand) gago.Genome {
-	var digits = make(Digits, size)
-	for i := range digits {
-		if rng.Float64() < 0.5 {
-			digits[i] = 1
-		}
-	}
-	return gago.Genome(digits)
 }
 
 func contains(s []int, e int) bool {
@@ -144,7 +95,7 @@ func graphAlg(filename string) {
 	}
 	defer file.Close()
 
-	distanceTable = make(map[Edge]float64)
+	distanceTable = DistanceTable{}
 	verts := []int{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -200,10 +151,32 @@ func graphAlg(filename string) {
 	fmt.Println("Fitness: ", fitness)
 }
 
+func fitness(g genetic.MyGenome) float64 {
+	verts := []int{}
+	for i, b := range g.Gene {
+		if b == 1 {
+			verts = append(verts, i+1)
+		}
+	}
 
-func genetic(filename string) {
-	distanceTable = make(map[Edge]float64)
-	// TESTING GAGO
+	var total float64
+	var count float64
+	for i := 1; i < len(verts); i++{
+		for j := i+1; j < len(verts); j++ {
+			if dist, found := distanceTable.Search(verts[i - 1], verts[j]); found {
+				total += dist
+				count++
+			}
+		}
+	}
+
+	return float64(size) - ( total / count)
+}
+
+
+func GeneticAlg(filename string) {
+	distanceTable = DistanceTable{}
+
 	file, err := os.Open(filename)
 	if err != nil {
 		fmt.Println("Erro ao abrir o ficheiro: ", err)
@@ -229,16 +202,25 @@ func genetic(filename string) {
 	}
 	file.Close()
 
-	//distanceTable.Print()
 	size = len(verts)
 
-	var ga = gago.Generational(MakeDigits)
-	ga.Initialize()
-
-	for i := 1; i < 1000; i++ {
-		ga.Enhance()
+	param := genetic.Parameter{
+		Initializer: new(genetic.RandomInitializer),
+		Selector: new(genetic.RandomSelector),
+		Breeder: new(genetic.GA2PointBreeder),
+		Mutator: new(genetic.RandomBitFlipMutator),
+		PMutate: 0.1,
+		PBreed: 0.7,
 	}
-	fmt.Printf("Best fitness -> %f\n", ga.Best.Fitness)
+
+	ga := genetic.NewGA(param)
+
+	genome := genetic.NewMyGenome(size, fitness)
+
+	ga.Init(100, genome)
+	ga.Optimize(10)
+
+	ga.PrintTop(10)
 }
 
 func hybrid(filename string) {}
@@ -270,7 +252,7 @@ func main() {
 	case 1:
 		graphAlg(os.Args[1])
 	case 2:
-		genetic(os.Args[1])
+		GeneticAlg(os.Args[1])
 	case 3:
 		hybrid(os.Args[1])
 	case 4:
@@ -301,7 +283,7 @@ func test_all_genetic() {
 
 	for _, filename := range filenames {
 		fmt.Print(filename, ": ")
-		genetic(filename)
+		GeneticAlg(filename)
 	}
 }
 
