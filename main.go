@@ -36,17 +36,16 @@ func (s Solution) Distance() float64 {
 		}
 	}
 
-	return count - ( total / count)
+	return float64(size) - ( total / count)
 }
 
 func (s Solution) Neighbour() Solution {
 	n := s
 	i := rand.Intn(len(s))
-	if n[i] == 0 {
-		n[i] = 1
-	} else {
-		n[i] = 0
-	}
+	j := rand.Intn(len(s))
+
+	n[i], n[j] = n[j], n[i]
+
 	return n
 }
 
@@ -177,8 +176,8 @@ func graphAlg(filename string) {
 	annealing := func (solution Solution) (Solution, float64) {
 		oldDist := solution.Distance()
 		T := 1.0
-		TMin := 0.00001
-		alpha := 0.001
+		TMin := 0.0
+		alpha := 0.00001
 		for T > TMin {
 			for i := 1; i <= 100; i++ {
 				newSolution := solution.Neighbour()
