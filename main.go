@@ -15,17 +15,16 @@ var (
  	size int
 )
 
-type Solution []int
-func (s Solution) Distance() float64 {
+func Distance(s []int) float64 {
 	verts := []int{}
-	for i := 1; i < len(s); i++ {
+	for i := 1; i <= len(s); i++ {
 		if s[i-1] == 1 {
 			verts = append(verts, i)
 		}
 	}
 
 	var total float64
-	var count float64
+	var count int
 	for i := 0; i < len(verts); i++{
 		for j := i+1; j < len(verts); j++ {
 			dist, _ := distanceTable.Search(verts[i], verts[j])
@@ -34,11 +33,12 @@ func (s Solution) Distance() float64 {
 		}
 	}
 
-	return  total / count
+	return  total / float64(count)
 }
 
-func (s Solution) Neighbour() Solution {
-	n := s
+func Neighbour(s []int) []int {
+	n := make([]int, len(s))
+	copy(n, s)
 	i := rand.Intn(len(s))
 	j := rand.Intn(len(s))
 
@@ -55,9 +55,7 @@ type Edge struct {
 type DistanceTable []Edge
 
 func (d *DistanceTable) Add(n1, n2 int, dist float64) {
-	if _, found := (*d).Search(n1, n2); !found {
 		*d = append(*d, Edge{n1,n2, dist})
-	}
 }
 
 // Search devolve o custo de ir de n1 para n2
@@ -119,58 +117,65 @@ func graphAlg(filename string) {
 	size = len(verts)
 
 	solution := make([]int, size)
-
 	for i, _ := range solution {
 		solution[i] = rand.Intn(2)
 	}
-
-	annealing := func (solution Solution) (Solution, float64) {
-		oldDist := solution.Distance()
+	annealing := func (solution []int) ([]int, float64, []int, float64) {
+		var bestSolution []int
+		bestDistance := 0.0
+		oldDist := Distance(solution)
 		T := 1.0
 		TMin := 0.0
 		alpha := 0.00001
 		for T > TMin {
 			for i := 1; i <= 100; i++ {
-				newSolution := solution.Neighbour()
-				newDist := newSolution.Distance()
+				newSolution := Neighbour(solution)
+				newDist := Distance(newSolution)
 
 				ap := math.Exp((oldDist - newDist) / T)
 				if ap > rand.Float64() {
 					solution = newSolution
 					oldDist = newDist
 				}
+
+				if newDist > bestDistance {
+					bestSolution = newSolution
+					bestDistance = newDist
+				}
 			}
 			T = T * alpha
 		}
-		return solution, oldDist
+		return solution, oldDist, bestSolution, bestDistance
 	}
 
-	solution, fitness := annealing(solution)
+	solution, oldfitness, best, bestfit := annealing(solution)
 
 	fmt.Println("Solution: ", solution)
-	fmt.Println("Fitness: ", fitness)
+	fmt.Println("Fitness: ", oldfitness)
+
+	fmt.Println("Best: ", best)
+	fmt.Println("BESTFIT: ", bestfit)
 }
 
 func fitness(g genetic.MyGenome) float64 {
 	verts := []int{}
-	for i, b := range g.Gene {
-		if b == 1 {
-			verts = append(verts, i+1)
+	for i := 1; i < len(g.Gene); i++ {
+		if g.Gene[i-1] == 1 {
+			verts = append(verts, i)
 		}
 	}
 
 	var total float64
-	var count float64
-	for i := 1; i < len(verts); i++{
+	var count int
+	for i := 0; i < len(verts); i++{
 		for j := i+1; j < len(verts); j++ {
-			if dist, found := distanceTable.Search(verts[i - 1], verts[j]); found {
-				total += dist
-				count++
-			}
+			dist, _ := distanceTable.Search(verts[i], verts[j])
+			total += dist
+			count++
 		}
 	}
 
-	return float64(size) - ( total / count)
+	return  total / float64(count)
 }
 
 
@@ -221,6 +226,8 @@ func GeneticAlg(filename string) {
 	ga.Optimize(10)
 
 	ga.PrintTop(10)
+
+	fmt.Println("\nBest: ", ga.Best())
 }
 
 func hybrid(filename string) {}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"math"
 )
 
 type Parameter struct {
@@ -80,7 +81,14 @@ func (ga *GA) OptimizeUntil(stop func(best Genome) bool) {
 
 func (ga *GA) Best() Genome {
 	sort.Sort(ga.pop)
-	return ga.pop[0]
+	best := ga.pop[0]
+	for _, pop := range ga.pop {
+		if !math.IsNaN(pop.Fitness()) {
+			best = pop
+			break
+		}
+	}
+	return best
 }
 
 func (ga *GA) PrintTop(n int) {
