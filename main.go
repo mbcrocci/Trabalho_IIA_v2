@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"bufio"
 	"math"
-	"github.com/mbcrocci/Trabalho_IIA_v2/genetic"
+	"strconv"
 )
 var (
 	distanceTable DistanceTable
@@ -84,19 +84,29 @@ type Edge struct {
 	Dist float64
 }
 
-type DistanceTable []Edge
+type Edge2 string
+
+//type DistanceTable []Edge
+
+type DistanceTable map[string]float64
 
 func (d *DistanceTable) Add(n1, n2 int, dist float64) {
-		*d = append(*d, Edge{n1,n2, dist})
+	edge := strconv.Itoa(n1) + "-" + strconv.Itoa(n2)
+	//*d = append(*d, Edge{n1,n2, dist})
+	(*d)[edge] = dist
 }
 
 // Search devolve o custo de ir de n1 para n2
 // Devolve um false caso essa ligacao nao exista
 func (d DistanceTable) Search(n1, n2 int) (float64, bool) {
-	for _, edge := range d {
+	/*for _, edge := range d {
 		if (edge.From == n1 && edge.To == n2) || (edge.From == n2 && edge.To == n1) {
 			return edge.Dist, true
 		}
+	}*/
+	edge := strconv.Itoa(n1) + "-" + strconv.Itoa(n2)
+	if val, ok := d[edge]; ok {
+		return val, ok
 	}
 	return 0.0, false
 }
@@ -117,7 +127,7 @@ func contains(s []int, e int) bool {
 	return false
 }
 
-func GraphAlg(filename string) {
+func GraphAlg(filename string, alp float64, it int) {
 	distanceTable = readFile(filename)
 
 	solution := make([]int, size)
@@ -130,9 +140,9 @@ func GraphAlg(filename string) {
 		oldDist := Distance(solution)
 		T := 1.0
 		TMin := 0.0
-		alpha := 0.00001
+		alpha := alp
 		for T > TMin {
-			for i := 1; i <= 100; i++ {
+			for i := 1; i <= it; i++ {
 				newSolution := Neighbour(solution)
 				newDist := Distance(newSolution)
 
@@ -161,7 +171,7 @@ func GraphAlg(filename string) {
 	fmt.Println("BESTFIT: ", bestfit)
 }
 
-func fitness(g genetic.MyGenome) float64 {
+func fitness(g MyGenome) float64 {
 	verts := []int{}
 	for i := 1; i <= len(g.Gene); i++ {
 		if g.Gene[i-1] == 1 {
@@ -183,52 +193,52 @@ func fitness(g genetic.MyGenome) float64 {
 }
 
 
-func GeneticAlg(filename string) {
+func GeneticAlg(filename string, gens int, pmut, pbreed float64) {
 	distanceTable = readFile(filename)
 
-	param := genetic.Parameter{
-		Initializer: new(genetic.RandomInitializer),
-		Selector: new(genetic.RandomSelector),
-		Breeder: new(genetic.GA2PointBreeder),
-		Mutator: new(genetic.RandomBitFlipMutator),
-		PMutate: 0.1,
-		PBreed: 0.7,
+	param := Parameter{
+		Initializer: new(RandomInitializer),
+		Selector: new(TournamentSelector),
+		Breeder: new(GA2PointBreeder),
+		Mutator: new(RandomBitFlipMutator),
+		PMutate: pmut,
+		PBreed: pbreed,
 	}
 
-	ga := genetic.NewGA(param)
+	ga := NewGA(param)
 
-	genome := genetic.NewMyGenome(size, fitness)
+	genome := NewMyGenome(size, fitness)
 
 	ga.Init(100, genome)
-	ga.Optimize(10)
+	ga.Optimize(gens)
 
 	//ga.PrintTop(10)
 	best := ga.Best()
 	fmt.Println("\nBest: ", best, " -> Fit: ", best.Fitness())
 }
 
-func HybridAlg(filename string) {
+func HybridAlg(filename string, gens int, pmut, pbreed float64, alp float64, it int) {
 	distanceTable = readFile(filename)
 
 
-	param := genetic.Parameter{
-		Initializer: new(genetic.RandomInitializer),
-		Selector: new(genetic.RandomSelector),
-		Breeder: new(genetic.GA2PointBreeder),
-		Mutator: new(genetic.RandomBitFlipMutator),
-		PMutate: 0.1,
-		PBreed: 0.7,
+	param := Parameter{
+		Initializer: new(RandomInitializer),
+		Selector: new(RandomSelector),
+		Breeder: new(GA2PointBreeder),
+		Mutator: new(RandomBitFlipMutator),
+		PMutate: pmut,
+		PBreed: pbreed,
 	}
 
-	ga := genetic.NewGA(param)
+	ga := NewGA(param)
 
-	genome := genetic.NewMyGenome(size, fitness)
+	genome := NewMyGenome(size, fitness)
 
 	ga.Init(100, genome)
-	ga.Optimize(10)
+	ga.Optimize(gens)
 
 	//ga.PrintTop(10)
-	bestga := ga.Best().(genetic.MyGenome)
+	bestga := ga.Best().(MyGenome)
 	solution := bestga.Gene
 
 	annealing := func (solution []int) ([]int, float64, []int, float64) {
@@ -237,9 +247,9 @@ func HybridAlg(filename string) {
 		oldDist := Distance(solution)
 		T := 1.0
 		TMin := 0.0
-		alpha := 0.00001
+		alpha := alp
 		for T > TMin {
-			for i := 1; i <= 100; i++ {
+			for i := 1; i <= it; i++ {
 				newSolution := Neighbour(solution)
 				newDist := Distance(newSolution)
 
@@ -293,11 +303,11 @@ func main() {
 	op := menu()
 	switch op {
 	case 1:
-		GraphAlg(os.Args[1])
+		GraphAlg(os.Args[1], 0.00001, 100)
 	case 2:
-		GeneticAlg(os.Args[1])
+		GeneticAlg(os.Args[1], 100, 0.1, 0.7)
 	case 3:
-		HybridAlg(os.Args[1])
+		HybridAlg(os.Args[1], 10, 0.1, 0.7, 0.00001, 100)
 	case 4:
 		test_all_graph()
 	case 5:
@@ -324,51 +334,51 @@ func test_all_graph() {
 
 	for _, filename := range filenames {
 		fmt.Print(filename, ": ")
-		GraphAlg(filename)
+		GraphAlg(filename, 0.00001, 100)
 	}
 }
 
 func test_all_genetic() {
 	filenames := []string{
 		"instancias/MDPI1_20.txt",
-		"instancias/MDPI1_150.txt",
-		"instancias/MDPI1_500.txt",
 		"instancias/MDPI2_25.txt",
 		"instancias/MDPI2_30.txt",
-		"instancias/MDPI2_150.txt",
 		"instancias/MDPII1_20.txt",
-		"instancias/MDPII1_150.txt",
 		"instancias/MDPII2_25.txt",
 		"instancias/MDPII2_30.txt",
+		"instancias/MDPI1_150.txt",
+		"instancias/MDPI1_500.txt",
+		"instancias/MDPII1_150.txt",
+		"instancias/MDPI2_150.txt",
 		"instancias/MDPII2_150.txt",
 		"instancias/MDPII2_500.txt",
 	}
 
 	for _, filename := range filenames {
 		fmt.Print(filename, ": ")
-		GeneticAlg(filename)
+		GeneticAlg(os.Args[1], 10, 0.1, 0.7)
 	}
 }
 
 func test_all_hybrid() {
 	filenames := []string{
 		"instancias/MDPI1_20.txt",
-		"instancias/MDPI1_150.txt",
-		"instancias/MDPI1_500.txt",
 		"instancias/MDPI2_25.txt",
 		"instancias/MDPI2_30.txt",
-		"instancias/MDPI2_150.txt",
 		"instancias/MDPII1_20.txt",
-		"instancias/MDPII1_150.txt",
 		"instancias/MDPII2_25.txt",
 		"instancias/MDPII2_30.txt",
+		"instancias/MDPI1_150.txt",
+		"instancias/MDPI1_500.txt",
+		"instancias/MDPII1_150.txt",
+		"instancias/MDPI2_150.txt",
 		"instancias/MDPII2_150.txt",
 		"instancias/MDPII2_500.txt",
 	}
 
 	for _, filename := range filenames {
 		fmt.Print(filename, ": ")
-		HybridAlg(filename)
+		HybridAlg(os.Args[1], 10, 0.1, 0.7, 0.00001, 100)
 	}
 }
 

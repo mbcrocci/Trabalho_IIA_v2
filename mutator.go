@@ -1,4 +1,4 @@
-package genetic
+package main
 
 import (
 	"math/rand"
@@ -15,7 +15,6 @@ func (m RandomBitFlipMutator) Mutate(genome Genome) Genome {
 	n := genome.Copy()
 	n.Flip(rand.Intn(genome.Len()))
 	return n
-
 }
 
 func (m RandomBitFlipMutator) String() string { return "RandomBitFlipMutator" }

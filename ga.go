@@ -1,4 +1,4 @@
-package genetic
+package main
 
 import (
 	"fmt"
@@ -48,9 +48,8 @@ func (ga *GA) Init(popsize int, i Genome) {
 
 func (ga *GA) Optimize(gen int) {
 	for i := 0; i < gen; i++ {
-		l := len(ga.pop) // Do not try to breed/mutate new in this gen
+		l := len(ga.pop)
 		for p := 0; p < l; p++ {
-			//Breed two inviduals selected with selector.
 			if ga.Parameter.PBreed > rand.Float64() {
 				children := make(Population, 2)
 				children[0], children[1] = ga.Parameter.Breeder.Breed(
@@ -83,7 +82,7 @@ func (ga *GA) Best() Genome {
 	sort.Sort(ga.pop)
 	best := ga.pop[0]
 	for _, pop := range ga.pop {
-		if !math.IsNaN(pop.Fitness()) {
+		if !math.IsNaN(pop.Fitness()) && pop.Valid() {
 			best = pop
 			break
 		}

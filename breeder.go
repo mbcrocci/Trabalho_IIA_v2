@@ -1,4 +1,4 @@
-package genetic
+package main
 
 import (
 	"math/rand"

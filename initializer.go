@@ -1,4 +1,4 @@
-package genetic
+package main
 
 type Initializer interface {
 	// Initializes popsize length []GAGenome from i

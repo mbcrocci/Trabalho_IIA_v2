@@ -1,4 +1,4 @@
-package genetic
+package main
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ type Genome interface {
 type Population []Genome
 
 func (g Population) Len() int           { return len(g) }
-func (g Population) Less(i, j int) bool { return g[i].Fitness() < g[j].Fitness() }
+func (g Population) Less(i, j int) bool { return g[i].Fitness() > g[j].Fitness() }
 func (g Population) Swap(i, j int)      { g[i], g[j] = g[j], g[i] }
 
 func AppendGenomes(slice, data Population) Population {
@@ -106,17 +106,20 @@ func (g MyGenome) Flip(index int) {
 
 func (g MyGenome) Valid() bool {
 	verts := []int{}
-	for i, b := range g.Gene {
-		if b == 1 {
+	for i := 1; i <= len(g.Gene); i++ {
+		if g.Gene[i-1] == 1 {
 			verts = append(verts, i)
 		}
 	}
-	/*for i := 1; i < len(verts); i++ {
-		if _, found := distanceTable.Search(i-1, i); !found {
-			return false
-		}
 
-	}*/
+	for i := 0; i < len(verts); i++{
+		for j := i+1; j < len(verts); j++ {
+			_, found := distanceTable.Search(verts[i], verts[j])
+			if !found {
+				return false
+			}
+		}
+	}
 	return true
 }
 func (g MyGenome) Len() int { return len(g.Gene) }
